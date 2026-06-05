@@ -73,7 +73,7 @@ def generate_launch_description():
                             'frame_id': 'camera_link',
                             'odom_frame_id': 'odom',
                             'publish_tf': True,
-                            'wait_imu_to_init': False,
+                            'wait_imu_to_init': True,
                             'approx_sync': True,
                             'approx_sync_max_interval': 0.1,
                             'sync_queue_size': 5,
@@ -84,7 +84,8 @@ def generate_launch_description():
                     remappings=[
                         ('/rgb/image', '/camera/camera/color/image_raw'),
                         ('/depth/image', '/camera/camera/aligned_depth_to_color/image_raw'),
-                        ('/rgb/camera_info', '/camera/camera/color/camera_info')
+                        ('/rgb/camera_info', '/camera/camera/color/camera_info'),
+                        ('/imu', '/rtabmap/imu')
                     ]
                 )
             ]
