@@ -112,7 +112,7 @@ Visualization Manager:
         Durability Policy: Volatile
         History Policy: Keep Last
         Reliability Policy: Reliable
-        Value: /rviz/camera/color/image_raw
+        Value: /rviz/yolo_segmentation/result
       Value: true
   Enabled: true
   Global Options:

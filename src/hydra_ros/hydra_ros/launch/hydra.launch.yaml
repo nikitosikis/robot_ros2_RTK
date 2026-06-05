@@ -34,6 +34,10 @@ launch:
   - arg: {name: rviz_image_input_topic, default: '/camera/camera/color/image_raw', description: source RGB topic for RViz throttling}
   - arg: {name: rviz_image_topic, default: '/rviz/camera/color/image_raw', description: throttled RGB topic for RViz}
   - arg: {name: rviz_image_rate_hz, default: '1.0', description: RGB image rate for RViz}
+  - arg: {name: start_rviz_yolo_image_throttle, default: 'true', description: publish a low-rate YOLO annotated image for RViz}
+  - arg: {name: rviz_yolo_image_input_topic, default: '/yolo_segmentation/result', description: source YOLO annotated topic for RViz throttling}
+  - arg: {name: rviz_yolo_image_topic, default: '/rviz/yolo_segmentation/result', description: throttled YOLO annotated topic for RViz}
+  - arg: {name: rviz_yolo_image_rate_hz, default: '1.0', description: YOLO annotated image rate for RViz}
   - node:
       if: $(var start_rviz_image_throttle)
       pkg: hydra_ros
@@ -43,6 +47,15 @@ launch:
         - {name: input_topic, value: $(var rviz_image_input_topic)}
         - {name: output_topic, value: $(var rviz_image_topic)}
         - {name: rate_hz, value: $(var rviz_image_rate_hz)}
+  - node:
+      if: $(var start_rviz_yolo_image_throttle)
+      pkg: hydra_ros
+      exec: throttled_image_republisher.py
+      name: rviz_yolo_image_throttle
+      param:
+        - {name: input_topic, value: $(var rviz_yolo_image_input_topic)}
+        - {name: output_topic, value: $(var rviz_yolo_image_topic)}
+        - {name: rate_hz, value: $(var rviz_yolo_image_rate_hz)}
   # hydra node
   - node:
       pkg: hydra_ros
