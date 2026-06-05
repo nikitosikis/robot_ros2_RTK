@@ -1,0 +1,87 @@
+---
+launch:
+  # development arguments
+  - arg: {name: debug, default: 'false', description: Run hydra with gdbserver}
+  - arg: {name: glog_verbosity, default: '0', description: Verbosity for glog-based logging in hydra}
+  - arg: {name: glog_level, default: '0', description: Minimum severity for glog-based logging in hdyra}
+  - arg: {name: print_missing, default: 'false', description: Have config utilities print all missing parameters when parsing configs}
+  # robot configuration
+  - arg: {name: use_sim_time, default: 'false', description: Use ROS sim time}
+  - arg: {name: dataset, description: Dataset hydra is running}
+  - arg: {name: labelspace, description: Closed-set semantics description}
+  - arg: {name: robot_id, default: '0', description: Unique robot identifier}
+  - arg: {name: sensor_frame, default: left_cam, description: Camera frame}
+  - arg: {name: robot_frame, default: base_link_gt, description: Robot body tf frame}
+  - arg: {name: odom_frame, default: world, description: Odometry (map) frame}
+  - arg: {name: map_frame, default: map, description: Backend scene graph frame}
+  # configuration
+  - arg: {name: hydra_config_path, default: $(find-pkg-share hydra)/config/datasets/$(var dataset).yaml, description: Primary hydra config}
+  - arg: {name: input_config_path, default: $(find-pkg-share hydra_ros)/config/datasets/$(var dataset).yaml, description: Hydra ROS input config}
+  - arg: {name: labelspace_path, default: $(find-pkg-share hydra)/config/label_spaces/$(var labelspace)_label_space.yaml, description: Closed set label space for Hydra}
+  - arg: {name: enable_lcd, default: 'true', description: Turn on scene graph loop closure detection}
+  - arg: {name: lcd_config_path, default: $(find-pkg-share hydra)/config/lcd/default.yaml, description: Loop closure detection config}
+  - arg: {name: extra_yaml, default: '{}'}
+  # output
+  - arg: {name: log_name, default: $(var dataset), description: Subdirectory to output to}
+  - arg: {name: log_path, default: $(env HOME)/.hydra/test, description: Directory to output to}
+  - arg: {name: exit_after_clock, default: 'false', description: Shutdown hydra node after a rosbag finishes playing}
+  - arg: {name: enable_zmq, default: 'true', description: Turn on zmq-based publishing for scene graph}
+  - arg: {name: zmq_url, default: 'tcp://0.0.0.0:45678', description: ZMQ publish url}
+  - arg: {name: zmq_send_mesh, default: 'false', description: Whether or not to serialize mesh when using ZMQ}
+  - arg: {name: start_visualizer, default: 'true', description: run hydra visualizer}
+  - arg: {name: start_rviz, default: 'true', description: run rviz with hydra visualizer}
+  - arg: {name: start_rviz_image_throttle, default: 'true', description: publish a low-rate RGB image for RViz}
+  - arg: {name: rviz_image_input_topic, default: '/camera/camera/color/image_raw', description: source RGB topic for RViz throttling}
+  - arg: {name: rviz_image_topic, default: '/rviz/camera/color/image_raw', description: throttled RGB topic for RViz}
+  - arg: {name: rviz_image_rate_hz, default: '1.0', description: RGB image rate for RViz}
+  - node:
+      if: $(var start_rviz_image_throttle)
+      pkg: hydra_ros
+      exec: throttled_image_republisher.py
+      name: rviz_image_throttle
+      param:
+        - {name: input_topic, value: $(var rviz_image_input_topic)}
+        - {name: output_topic, value: $(var rviz_image_topic)}
+        - {name: rate_hz, value: $(var rviz_image_rate_hz)}
+  # hydra node
+  - node:
+      pkg: hydra_ros
+      exec: hydra_ros_node
+      name: hydra
+      remap:
+        - from: "/hydra/input/left_cam/rgb/camera_info"
+          to: "/camera/camera/color/camera_info"
+        - from: "/hydra/input/left_cam/depth/camera_info"
+          to: "/camera/camera/aligned_depth_to_color/camera_info"
+        - from: "/hydra/input/left_cam/rgb/image_raw"
+          to: "/camera/camera/color/image_raw"
+        - from: "/hydra/input/left_cam/depth_registered/image_rect"
+          to: "/camera/camera/aligned_depth_to_color/image_raw"
+        - from: "/hydra/input/left_cam/semantic/image_raw"
+          to: "/yolo_segmentation/labels"
+      on_exit: shutdown
+      launch-prefix: $(if $(var debug) 'gdbserver localhost:3000')
+      param:
+        - {name: use_sim_time, value: $(var use_sim_time)}
+      args: >
+        --config-utilities-file $(var input_config_path)
+        --config-utilities-file $(var hydra_config_path)
+        --config-utilities-file $(var labelspace_path)
+        --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/mesh_segmenter_sinks.yaml@frontend/objects
+        --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/gvd_places_sinks.yaml@frontend/freespace_places
+        --config-utilities-file $(find-pkg-share hydra_ros)/config/sinks/active_window_sinks.yaml@active_window
+        --config-utilities-yaml {enable_lcd: $(var enable_lcd)}
+        --config-utilities-file $(var lcd_config_path)
+        --config-utilities-yaml {exit_after_clock: $(var exit_after_clock), log_path: $(var log_path)}
+        --config-utilities-yaml {print_missing: $(var print_missing), glog_level: $(var glog_level), glog_verbosity: $(var glog_verbosity)}
+        --config-utilities-yaml {robot_id: $(var robot_id), odom_frame: $(var odom_frame), robot_frame: $(var robot_frame), map_frame: $(var map_frame)}
+        --config-utilities-yaml {enable_zmq_interface: $(var enable_zmq), backend: {zmq_sink: {url: $(var zmq_url), send_mesh: $(var zmq_send_mesh)}}}
+        --config-utilities-yaml $(var extra_yaml)
+  # hydra visualizer
+  - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
+  - include:
+      file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
+      if: $(var start_visualizer)
+      arg:
+        - {name: external_plugins_path, value: $(find-pkg-share hydra_ros)/config/hydra_ros_visualizer_plugins.yaml}
+        - {name: start_rviz, value: $(var start_rviz)}
