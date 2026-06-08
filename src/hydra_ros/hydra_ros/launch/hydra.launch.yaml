@@ -38,6 +38,10 @@ launch:
   - arg: {name: rviz_yolo_image_input_topic, default: '/yolo_segmentation/result', description: source YOLO annotated topic for RViz throttling}
   - arg: {name: rviz_yolo_image_topic, default: '/rviz/yolo_segmentation/result', description: throttled YOLO annotated topic for RViz}
   - arg: {name: rviz_yolo_image_rate_hz, default: '1.0', description: YOLO annotated image rate for RViz}
+  - arg: {name: start_rviz_thermal_image_throttle, default: 'true', description: publish a low-rate thermal image for remote RViz}
+  - arg: {name: rviz_thermal_image_input_topic, default: '/thermal/image_raw', description: source thermal topic for RViz throttling}
+  - arg: {name: rviz_thermal_image_topic, default: '/rviz/thermal/image_raw', description: throttled thermal topic for RViz}
+  - arg: {name: rviz_thermal_image_rate_hz, default: '1.0', description: thermal image rate for remote RViz}
   - node:
       if: $(var start_rviz_image_throttle)
       pkg: hydra_ros
@@ -56,6 +60,15 @@ launch:
         - {name: input_topic, value: $(var rviz_yolo_image_input_topic)}
         - {name: output_topic, value: $(var rviz_yolo_image_topic)}
         - {name: rate_hz, value: $(var rviz_yolo_image_rate_hz)}
+  - node:
+      if: $(var start_rviz_thermal_image_throttle)
+      pkg: hydra_ros
+      exec: throttled_image_republisher.py
+      name: rviz_thermal_image_throttle
+      param:
+        - {name: input_topic, value: $(var rviz_thermal_image_input_topic)}
+        - {name: output_topic, value: $(var rviz_thermal_image_topic)}
+        - {name: rate_hz, value: $(var rviz_thermal_image_rate_hz)}
   # hydra node
   - node:
       pkg: hydra_ros
@@ -92,9 +105,11 @@ launch:
         --config-utilities-yaml $(var extra_yaml)
   # hydra visualizer
   - set_remap: {from: hydra_visualizer/dsg, to: hydra/backend/dsg}
+  - set_remap: {from: dsg, to: hydra/backend/dsg}
   - include:
       file: $(find-pkg-share hydra_visualizer)/launch/streaming_visualizer.launch.yaml
       if: $(var start_visualizer)
       arg:
         - {name: external_plugins_path, value: $(find-pkg-share hydra_ros)/config/hydra_ros_visualizer_plugins.yaml}
         - {name: start_rviz, value: $(var start_rviz)}
+        - {name: use_sim_time, value: $(var use_sim_time)}

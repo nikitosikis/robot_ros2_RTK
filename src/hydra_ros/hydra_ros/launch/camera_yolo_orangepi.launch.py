@@ -1,11 +1,54 @@
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess, IncludeLaunchDescription, OpaqueFunction, TimerAction
+from launch.conditions import IfCondition
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, EnvironmentVariable, PathJoinSubstitution
 from launch_ros.actions import Node
+from launch_ros.substitutions import FindPackageShare
 
 
 def generate_launch_description():
     yolo_ws = LaunchConfiguration('yolo_ws')
+    start_data_capture = LaunchConfiguration('start_data_capture')
+    record_full_bag = LaunchConfiguration('record_full_bag')
+    full_bag_output = LaunchConfiguration('full_bag_output')
+    record_data_bag = LaunchConfiguration('record_data_bag')
+    data_bag_output = LaunchConfiguration('data_bag_output')
+    bag_storage = LaunchConfiguration('bag_storage')
+    thermal_device = LaunchConfiguration('thermal_device')
+    thermal_device_name = LaunchConfiguration('thermal_device_name')
+    microphone_device = LaunchConfiguration('microphone_device')
+
+    def launch_bag_recorder(context):
+        full_enabled = record_full_bag.perform(context).lower() == 'true'
+        data_enabled = record_data_bag.perform(context).lower() == 'true'
+        if full_enabled and data_enabled:
+            raise RuntimeError(
+                'record_full_bag and record_data_bag cannot both be true'
+            )
+        if not full_enabled and not data_enabled:
+            return []
+
+        return [
+            IncludeLaunchDescription(
+                PythonLaunchDescriptionSource(
+                    PathJoinSubstitution([
+                        FindPackageShare('robot_data_capture'),
+                        'launch',
+                        'record_bag.launch.py'
+                    ])
+                ),
+                launch_arguments={
+                    'bag_output': full_bag_output if full_enabled else data_bag_output,
+                    'record_mode': 'full' if full_enabled else 'data',
+                    'start_capture': 'false',
+                    'storage': bag_storage,
+                    'thermal_device': thermal_device,
+                    'thermal_device_name': thermal_device_name,
+                    'microphone_device': microphone_device,
+                }.items(),
+            )
+        ]
 
     return LaunchDescription([
         DeclareLaunchArgument(
@@ -15,6 +58,15 @@ def generate_launch_description():
                 'ros2_yolo_ws'
             ])
         ),
+        DeclareLaunchArgument('start_data_capture', default_value='true'),
+        DeclareLaunchArgument('record_full_bag', default_value='false'),
+        DeclareLaunchArgument('full_bag_output', default_value='robot_full_bag'),
+        DeclareLaunchArgument('record_data_bag', default_value='false'),
+        DeclareLaunchArgument('data_bag_output', default_value='robot_capture_bag'),
+        DeclareLaunchArgument('bag_storage', default_value='sqlite3'),
+        DeclareLaunchArgument('thermal_device', default_value=''),
+        DeclareLaunchArgument('thermal_device_name', default_value='USB2.0 PC CAMERA'),
+        DeclareLaunchArgument('microphone_device', default_value='default'),
 
         ExecuteProcess(
             cmd=[
@@ -145,6 +197,27 @@ def generate_launch_description():
         ),
 
         TimerAction(
+            period=15.0,
+            actions=[
+                IncludeLaunchDescription(
+                    PythonLaunchDescriptionSource(
+                        PathJoinSubstitution([
+                            FindPackageShare('robot_data_capture'),
+                            'launch',
+                            'capture.launch.py'
+                        ])
+                    ),
+                    condition=IfCondition(start_data_capture),
+                    launch_arguments={
+                        'thermal_device': thermal_device,
+                        'thermal_device_name': thermal_device_name,
+                        'microphone_device': microphone_device,
+                    }.items(),
+                )
+            ]
+        ),
+
+        TimerAction(
             period=25.0,
             actions=[
                 ExecuteProcess(
@@ -154,16 +227,21 @@ def generate_launch_description():
                         'hydra.launch.yaml',
                         'dataset:=uhumans2',
                         'labelspace:=ade20k_full',
-                        'color_topic:=/camera/camera/color/image_raw',
-                        'depth_topic:=/camera/camera/aligned_depth_to_color/image_raw',
-                        'use_gt_semantics:=false',
                         'map_frame:=map',
                         'odom_frame:=odom',
                         'sensor_frame:=camera_color_optical_frame',
-                        'robot_frame:=camera_link'
+                        'robot_frame:=camera_link',
+                        'enable_zmq:=false'
                     ],
                     output='screen'
                 )
+            ]
+        ),
+
+        TimerAction(
+            period=30.0,
+            actions=[
+                OpaqueFunction(function=launch_bag_recorder)
             ]
         )
     ])

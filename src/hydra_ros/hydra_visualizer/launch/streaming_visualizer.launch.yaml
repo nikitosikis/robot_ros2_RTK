@@ -9,6 +9,7 @@ launch:
   - arg: {name: visualizer_plugins_path, default: $(find-pkg-share hydra_visualizer)/config/visualizer_plugins.yaml}
   - arg: {name: external_plugins_path, default: $(find-pkg-share hydra_visualizer)/config/external_plugins.yaml}
   - arg: {name: use_color_adapter, default: 'false', description: Start visualizer using mesh color adapter}
+  - arg: {name: use_sim_time, default: 'false', description: Use ROS sim time}
   # communication
   - arg: {name: use_zmq, default: 'false', description: use zmq to receive scene graphs}
   - arg: {name: visualizer_frame, default: map, description: frame ID for zmq to use}
@@ -22,6 +23,8 @@ launch:
       name: $(var visualizer_ns)
       launch-prefix: $(if $(var debug) 'gdbserver localhost:3000')
       on_exit: shutdown
+      param:
+        - {name: use_sim_time, value: $(var use_sim_time)}
       args: >
         --config-utilities-file $(var visualizer_config_path)
         --config-utilities-file $(var visualizer_plugins_path)
@@ -32,4 +35,11 @@ launch:
   # rviz node and control for launching
   - arg: {name: start_rviz, default: 'true', description: automatically start rviz}
   - arg: {name: rviz_path, default: $(find-pkg-share hydra_visualizer)/rviz/streaming_visualizer.rviz, description: rviz file to load}
-  - node: {if: $(var start_rviz), name: rviz, pkg: rviz2, exec: rviz2, args: -d $(var rviz_path)}
+  - node:
+      if: $(var start_rviz)
+      name: rviz
+      pkg: rviz2
+      exec: rviz2
+      param:
+        - {name: use_sim_time, value: $(var use_sim_time)}
+      args: -d $(var rviz_path)

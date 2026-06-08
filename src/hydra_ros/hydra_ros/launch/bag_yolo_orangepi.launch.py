@@ -1,17 +1,34 @@
 from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
-from launch.substitutions import LaunchConfiguration, EnvironmentVariable, PathJoinSubstitution
+from launch.substitutions import (
+    EnvironmentVariable,
+    LaunchConfiguration,
+    PathJoinSubstitution,
+    PythonExpression,
+)
 from launch_ros.actions import Node
 
 
 def generate_launch_description():
     bag_path = LaunchConfiguration('bag_path')
     yolo_ws = LaunchConfiguration('yolo_ws')
+    use_sim_time = LaunchConfiguration('use_sim_time')
+    start_rviz = LaunchConfiguration('start_rviz')
 
     return LaunchDescription([
         DeclareLaunchArgument(
             'bag_path',
             default_value='proezd15_05V4'
+        ),
+
+        DeclareLaunchArgument(
+            'use_sim_time',
+            default_value='true'
+        ),
+
+        DeclareLaunchArgument(
+            'start_rviz',
+            default_value='true'
         ),
 
         DeclareLaunchArgument(
@@ -26,6 +43,7 @@ def generate_launch_description():
             cmd=[
                 'ros2', 'bag', 'play',
                 bag_path,
+                '--clock',
                 '--loop'
             ],
             output='screen'
@@ -43,7 +61,8 @@ def generate_launch_description():
                         {
                             'use_mag': False,
                             'publish_tf': False,
-                            'world_frame': 'enu'
+                            'world_frame': 'enu',
+                            'use_sim_time': use_sim_time
                         }
                     ],
                     remappings=[
@@ -70,9 +89,10 @@ def generate_launch_description():
                             'wait_imu_to_init': True,
                             'approx_sync': True,
                             'approx_sync_max_interval': 0.1,
-                            'queue_size': 5,
+                            'sync_queue_size': 5,
                             'Vis/MinInliers': '10',
-                            'Vis/MaxFeatures': '1000'
+                            'Vis/MaxFeatures': '1000',
+                            'use_sim_time': use_sim_time
                         }
                     ],
                     remappings=[
@@ -93,6 +113,7 @@ def generate_launch_description():
                     executable='static_transform_publisher',
                     name='static_tf_camera_link_to_base_link_gt',
                     output='screen',
+                    parameters=[{'use_sim_time': use_sim_time}],
                     arguments=[
                         '--x', '0',
                         '--y', '0',
@@ -110,6 +131,7 @@ def generate_launch_description():
                     executable='static_transform_publisher',
                     name='static_tf_map_to_odom',
                     output='screen',
+                    parameters=[{'use_sim_time': use_sim_time}],
                     arguments=[
                         '--x', '0',
                         '--y', '0',
@@ -139,7 +161,7 @@ def generate_launch_description():
         ),
 
         TimerAction(
-            period=15.0,
+            period=25.0,
             actions=[
                 ExecuteProcess(
                     cmd=[
@@ -148,13 +170,13 @@ def generate_launch_description():
                         'hydra.launch.yaml',
                         'dataset:=uhumans2',
                         'labelspace:=ade20k_full',
-                        'color_topic:=/camera/camera/color/image_raw',
-                        'depth_topic:=/camera/camera/aligned_depth_to_color/image_raw',
-                        'use_gt_semantics:=false',
                         'map_frame:=map',
                         'odom_frame:=odom',
                         'sensor_frame:=camera_color_optical_frame',
-                        'robot_frame:=camera_link'
+                        'robot_frame:=camera_link',
+                        'enable_zmq:=false',
+                        PythonExpression(["'start_rviz:=' + '", start_rviz, "'"]),
+                        PythonExpression(["'use_sim_time:=' + '", use_sim_time, "'"])
                     ],
                     output='screen'
                 )
