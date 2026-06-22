@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
 
-  config::Settings().setLogger("glog");
+  config::Settings().setLogger("stdout");
 
   VLOG(1) << "Settings:\n" << config::toString(node_settings);
 

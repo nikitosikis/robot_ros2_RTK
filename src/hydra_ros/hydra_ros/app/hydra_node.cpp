@@ -136,7 +136,7 @@ int main(int argc, char* argv[]) {
     google::AddLogSink(ros_sink.get());
   }
 
-  config::Settings().setLogger("glog");
+  config::Settings().setLogger("stdout");
   if (settings.show_run_settings) {
     LOG(INFO) << "Using node settings\n" << config::toString(settings);
   }
