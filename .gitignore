@@ -10,3 +10,9 @@ __pycache__/
 .coverage
 
 .DS_Store
+
+ros2_yolo_ws/build/
+ros2_yolo_ws/install/
+ros2_yolo_ws/log/
+ros2_yolo_ws/src/yolo_segmentation/yolo_segmentation/ade20k-hrnetv2-c1.rknn
+ros2_yolo_ws/src/yolo_segmentation/yolo_segmentation/test_video.mp4
