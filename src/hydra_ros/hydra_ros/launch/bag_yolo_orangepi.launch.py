@@ -179,7 +179,6 @@ def generate_launch_description():
                         "bag",
                         "play",
                         bag_path,
-                        "--clock",
                         "--rate",
                         bag_play_rate,
                         "--disable-keyboard-controls",
