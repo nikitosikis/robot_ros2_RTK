@@ -146,6 +146,25 @@ bag_path:=/path/to/bag
 start_rviz:=true|false
 ```
 
+Переключение CPU/GPU задается аргументом `yolo_device`:
+
+```bash
+# CPU, поведение по умолчанию
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py yolo_device:=cpu
+
+# GPU CUDA, первая видеокарта
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py yolo_device:=cuda:0
+```
+
+Ultralytics также принимает короткую форму `yolo_device:=0` для первой CUDA
+видеокарты. Если GPU не подхватывается, проверь CUDA внутри venv:
+
+```bash
+cd ~/ros2_ws
+source robot_ros2_RTK/.venv-ultralytics/bin/activate
+PYTHONNOUSERSITE=1 python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CUDA not available')"
+```
+
 `PYTHONNOUSERSITE=1` нужен, чтобы ROS `cv_bridge` не подхватывал NumPy 2.x из
 `~/.local`. Для Jazzy безопаснее держать Ultralytics в `.venv-ultralytics` с
 NumPy 1.x.

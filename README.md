@@ -357,6 +357,25 @@ bag_play_rate:=1.0
 start_rviz:=true|false
 ```
 
+Переключение CPU/GPU задается аргументом `yolo_device`:
+
+```bash
+# CPU, поведение по умолчанию
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py yolo_device:=cpu
+
+# GPU CUDA, первая видеокарта
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py yolo_device:=cuda:0
+```
+
+Ultralytics также принимает короткую форму `yolo_device:=0` для первой CUDA
+видеокарты. Если GPU не подхватывается, проверьте CUDA внутри venv:
+
+```bash
+cd /home/<username>/ros2_ws
+source robot_ros2_RTK/.venv-ultralytics/bin/activate
+PYTHONNOUSERSITE=1 python -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CUDA not available')"
+```
+
 Если новая модель передается абсолютным путем через `model_path`, пересборка
 YOLO workspace не нужна. Пересборка нужна только если модель должна попасть в
 установленный `share/yolo_segmentation/models` как пакетный ресурс.
