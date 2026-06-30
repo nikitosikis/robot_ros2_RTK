@@ -1,3 +1,5 @@
+from glob import glob
+
 from setuptools import find_packages, setup
 
 package_name = 'yolo_segmentation'
@@ -10,8 +12,8 @@ setup(
         ('share/ament_index/resource_index/packages',
             ['resource/' + package_name]),
         ('share/' + package_name, ['package.xml']),
-        # Include model files
-        ('share/' + package_name + '/models', ['models/yolov8n-seg.onnx']),
+        ('share/' + package_name + '/launch', glob('launch/*.launch.py')),
+        ('share/' + package_name + '/models', glob('models/*')),
     ],
     install_requires=['setuptools'],
     zip_safe=True,
@@ -23,6 +25,7 @@ setup(
     entry_points={
         'console_scripts': [
             'segmentation_node = yolo_segmentation.segmentation_node:main',
+            'ultralytics_segmentation_node = yolo_segmentation.ultralytics_segmentation_node:main',
         ],
     },
 )

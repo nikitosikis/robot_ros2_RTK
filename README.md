@@ -279,6 +279,88 @@ python3 -c "import cv2, numpy; print('OpenCV/NumPy OK')"
 sudo apt install -y python3-opencv python3-numpy
 ```
 
+## 7.1. AMD: `bag_yolo_ultralytics_amd.launch.py` с моделью из вложенного workspace
+
+Для AMD/x86 используется Ultralytics-нода из вложенного YOLO workspace:
+
+```text
+/home/<username>/ros2_ws/robot_ros2_RTK/ros2_yolo_ws
+```
+
+Все рабочие модели кладем сюда:
+
+```text
+/home/<username>/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/models
+```
+
+Текущая модель по умолчанию для AMD launch:
+
+```text
+/home/nick/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/models/yolov8n-oiv7.pt
+```
+
+Подготовить Python-окружение для Ultralytics:
+
+```bash
+cd /home/<username>/ros2_ws
+source /opt/ros/jazzy/setup.bash
+
+python3 -m venv --system-site-packages robot_ros2_RTK/.venv-ultralytics
+PYTHONNOUSERSITE=1 robot_ros2_RTK/.venv-ultralytics/bin/pip install "numpy<2" ultralytics
+```
+
+`PYTHONNOUSERSITE=1` важен: он не дает Python подхватить пакеты из
+`~/.local/lib/python3.12/site-packages`. Это защищает ROS `cv_bridge` от
+конфликта с NumPy 2.x.
+
+Собрать YOLO workspace и основной launch-пакет:
+
+```bash
+cd /home/<username>/ros2_ws/robot_ros2_RTK/ros2_yolo_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select yolo_segmentation
+
+cd /home/<username>/ros2_ws
+source /opt/ros/jazzy/setup.bash
+colcon build --packages-select hydra_ros
+source install/setup.bash
+```
+
+Запуск с моделью по умолчанию:
+
+```bash
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py
+```
+
+Запуск с другой моделью из папки `models`:
+
+```bash
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py \
+  model_path:=/home/nick/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/models/yolov8n-seg.pt
+```
+
+Полезные аргументы:
+
+```text
+model_path:=/path/to/model.pt
+yolo_device:=cpu|cuda:0|0
+yolo_confidence:=0.2
+yolo_iou:=0.35
+yolo_image_size:=640
+use_depth_floor:=true|false
+h_floor_m:=0.23
+h_tolerance:=0.15
+yolo_setup:=/path/to/ros2_yolo_ws/install/setup.bash
+yolo_venv:=/path/to/.venv-ultralytics
+bag_path:=/path/to/bag
+bag_play_rate:=1.0
+start_rviz:=true|false
+```
+
+Если новая модель передается абсолютным путем через `model_path`, пересборка
+YOLO workspace не нужна. Пересборка нужна только если модель должна попасть в
+установленный `share/yolo_segmentation/models` как пакетный ресурс.
+
 ## 8. Сборка проекта
 
 Собрать основной workspace:

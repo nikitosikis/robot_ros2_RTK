@@ -60,27 +60,95 @@ source install/setup.bash
 Пакетам `kimera_rpgo`, `kimera_pgmo` и `hydra` нужен GTSAM. На Ubuntu 24.04 с
 ROS Jazzy он ставится пакетом `ros-jazzy-gtsam`.
 
-## Внешний YOLO workspace
+## YOLO workspace
 
-Launch-файлы ожидают, что YOLO workspace находится здесь:
-
-```text
-~/ros2_yolo_ws
-```
-
-Используемый скрипт сегментации:
+YOLO workspace находится внутри репозитория:
 
 ```text
-~/ros2_yolo_ws/src/yolo_segmentation/yolo_segmentation/segmentation_node_floor.py
+~/ros2_ws/robot_ros2_RTK/ros2_yolo_ws
 ```
 
-Если YOLO workspace лежит в другом месте, передай аргумент:
+Модели хранятся здесь:
+
+```text
+~/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/models
+```
+
+Для Orange Pi используется скрипт сегментации:
+
+```text
+~/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/yolo_segmentation/segmentation_node_floor.py
+```
+
+Если YOLO workspace лежит в другом месте, передай аргумент `yolo_ws`:
 
 ```bash
 ros2 launch hydra_ros camera_yolo_orangepi.launch.py yolo_ws:=/path/to/ros2_yolo_ws
 ```
 
 То же самое работает для `bag_yolo_orangepi.launch.py`.
+
+## AMD: запуск bag с Ultralytics YOLO
+
+AMD/x86 launch использует Ultralytics-ноду из вложенного `ros2_yolo_ws`:
+
+```text
+hydra_ros bag_yolo_ultralytics_amd.launch.py
+```
+
+Модель по умолчанию:
+
+```text
+~/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/models/yolov8n-oiv7.pt
+```
+
+Подготовка окружения:
+
+```bash
+cd ~/ros2_ws
+source /opt/ros/jazzy/setup.bash
+
+python3 -m venv --system-site-packages robot_ros2_RTK/.venv-ultralytics
+PYTHONNOUSERSITE=1 robot_ros2_RTK/.venv-ultralytics/bin/pip install "numpy<2" ultralytics
+
+cd robot_ros2_RTK/ros2_yolo_ws
+colcon build --packages-select yolo_segmentation
+
+cd ~/ros2_ws
+colcon build --packages-select hydra_ros
+source install/setup.bash
+```
+
+Обычный запуск с дефолтной моделью:
+
+```bash
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py
+```
+
+Запуск с другой моделью:
+
+```bash
+ros2 launch hydra_ros bag_yolo_ultralytics_amd.launch.py \
+  model_path:=/home/nick/ros2_ws/robot_ros2_RTK/ros2_yolo_ws/src/yolo_segmentation/models/yolov8n-seg.pt
+```
+
+Основные аргументы:
+
+```text
+model_path:=/path/to/model.pt
+yolo_device:=cpu|cuda:0|0
+yolo_confidence:=0.2
+yolo_iou:=0.35
+yolo_image_size:=640
+yolo_setup:=/path/to/ros2_yolo_ws/install/setup.bash
+yolo_venv:=/path/to/.venv-ultralytics
+bag_path:=/path/to/bag
+start_rviz:=true|false
+```
+
+`PYTHONNOUSERSITE=1` нужен, чтобы ROS `cv_bridge` не подхватывал NumPy 2.x из
+`~/.local`. Для Jazzy безопаснее держать Ultralytics в `.venv-ultralytics` с
+NumPy 1.x.
 
 ## Launch-файлы
 
@@ -92,7 +160,7 @@ ros2 launch hydra_ros camera_yolo_orangepi.launch.py yolo_ws:=/path/to/ros2_yolo
 - IMU RealSense и `imu_filter_madgwick`.
 - `rtabmap_odom/rgbd_odometry` с ожиданием инициализации по IMU.
 - Статические TF `camera_link -> base_link_gt` и `map -> odom`.
-- YOLO сегментацию из `~/ros2_yolo_ws`.
+- YOLO сегментацию из `~/ros2_ws/robot_ros2_RTK/ros2_yolo_ws`.
 - `hydra.launch.yaml` после задержки, чтобы камера, одометрия, TF и YOLO успели
   стартовать.
 
@@ -227,7 +295,7 @@ ros2 launch hydra_visualizer laptop_rviz.launch.yaml
 YOLO workspace лежит отдельно:
 
 ```text
-~/ros2_yolo_ws
+~/ros2_ws/robot_ros2_RTK/ros2_yolo_ws
 ```
 
 ## Схема удаленной визуализации
